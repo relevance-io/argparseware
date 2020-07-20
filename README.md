@@ -35,7 +35,7 @@ Some bundled middleware require optional dependencies:
 
 Since this is a standard Python package, install with:
 
-    pip install .
+    pip install argparseware
 
 #### Development mode
 
@@ -108,9 +108,10 @@ If you already have existing middleware in a common library, or if you want to u
 some of the bundled middleware, for example, the logging middleware:
 
     import argparseware
+    from argparseware.common import LoggingMiddleware
 
     parser = argparseware.ArgumentParser()
-    parser.add_middleware(argparseware.LoggingMiddleware())
+    parser.add_middleware(LoggingMiddleware())
     parser.run()
 
 ...then run with:
@@ -143,9 +144,9 @@ The easiest way to define your own reusable middleware component is to use the
 With some middleware, you'll want to be able to customize it and pass arguments
 to it. This can be done with the `IMiddleware` abstract class:
 
-    import argparseware
+    from argparseware.core import IMiddleware
 
-    class MyMiddleware(argparseware.IMiddleware):
+    class MyMiddleware(IMiddleware):
         def __init__(self, default_value):
             self.default_value = default_value
 
@@ -166,10 +167,11 @@ While it's great to have code reuse, sometimes you want the best of both worlds.
 `parse_args` method would, so you can easily adapt existing code:
 
     import argparseware
+    from argparseware.common import LoggingMiddleware
 
     parser = argparseware.ArgumentParser()
     parser.add_argument('--test')
-    parser.add_middleware(argparseware.LoggingMiddleware())
+    parser.add_middleware(LoggingMiddleware())
     args = parser.run()
 
     if args.test == 'hello world':

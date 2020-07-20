@@ -14,7 +14,7 @@ setup(
 
     description=main.__doc__.split('\n')[1].strip(),
     long_description=main.__doc__.strip(),
-    url='http://www.relevance.io/argparseware',
+    # url='http://www.relevance.io/argparseware',
     author='Relevance.io',
     author_email='info@relevance.io',
     maintainer=main.__author__,

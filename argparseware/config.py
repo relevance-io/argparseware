@@ -1,0 +1,272 @@
+"""
+This module contains middleware definitions for handling configuration data, such as
+configuration files, environment variables and the like.
+"""
+
+import os
+import json
+import argparse
+import typing
+
+from .core import merge_dicts
+from .core import IMiddleware
+
+
+class ConfigMiddleware(IMiddleware):
+    """
+    Configuration file middleware.
+    """
+
+    def __init__(self, defaults: typing.List[str] = None, *, allow_multi: bool = False,
+                 ignore_missing: bool = False, overwrite: bool = False, merge: bool = True) -> None:
+        """
+        This middleware loads configuration files and merge their contents into the
+        parser's namespace object.
+
+        The *defaults* argument is a list of default configuration files to load.
+
+        If *allow_multi* is enabled, the argument can be specified multiple times, with
+        each loaded configuration file being merged to the previous ones.
+
+        If *ignore_missing* is enabled, configuration files that do not exist will not
+        cause exceptions to be raised.
+
+        When *overwrite* is true, values that already exist in the parser's namespace
+        will be overwritten by values in the configuration files. Otherwise, if a duplicate
+        occurs, the namespace value has precedence, unless it's a dict and merging is enabled.
+
+        When *merge* is enabled, if a value is a dictionary and exists both in the namespace
+        and configuration file, it will be merged into the resulting object, complying with
+        the *overwrite* parameter for duplicate values. If *merge* is false and *overwrite*
+        is true, a value that is a dict that exists in both source and destination will be
+        completely overwritten by the configuration file value.
+        """
+        self.defaults = defaults or []
+        self.allow_multi = allow_multi
+        self.ignore_missing = ignore_missing
+        self.overwrite = overwrite
+        self.merge = merge
+
+    def configure(self, parser: argparse.ArgumentParser) -> None:
+        """
+        Configure the middleware arguments.
+        """
+        parser.add_argument('-c', '--config', action='append' if self.allow_multi else None,
+                            dest='config_file',
+                            help='the path to the configuration file')
+
+    def run(self, args: argparse.Namespace) -> None:
+        """
+        Run the middleware.
+        """
+        import anyconfig  # pylint: disable=import-outside-toplevel
+
+        files = args.config_file or self.defaults
+        data = anyconfig.load(files, ignore_missing=self.ignore_missing)
+        result = merge_dicts(
+            args.__dict__, data,
+            overwrite=self.overwrite,
+            recurse=self.merge,
+        )
+
+        args.__dict__.update(result)
+
+
+class ConfigListMiddleware(IMiddleware):
+    """
+    Configuration file list middleware.
+    """
+
+    def __init__(self, defaults: typing.Union[bool, dict] = None, *, allow_multi: bool = True,
+                 ignore_missing: bool = False, merge: bool = True) -> None:
+        """
+        This middleware loads configuration files and adds a variable list to the argument
+        parser namespace, with each entry being the parsed configuration data in the
+        order it was declared.
+
+        The *defaults* argument is a dictionary of data that will be set as the base data
+        dictionary for each loaded configuration file. If *defaults* is the `True` boolean,
+        the arguments from the namespace are used as defaults.
+
+        If *allow_multi* is disabled, the argument can be only be specified once.
+
+        If *ignore_missing* is enabled, configuration files that do not exist will not
+        cause exceptions to be raised.
+
+        When *merge* is enabled, if a value is a dictionary and exists both in the namespace
+        and configuration file, it will be merged into the resulting object. If *merge* is false,
+        a value that is a dict that exists in both source and destination will be
+        completely overwritten by the configuration file value.
+        """
+        self.defaults = defaults or {}
+        self.allow_multi = allow_multi
+        self.ignore_missing = ignore_missing
+        self.merge = merge
+
+    def configure(self, parser: argparse.ArgumentParser) -> None:
+        """
+        Configure the middleware arguments.
+        """
+        parser.add_argument('-c', '--config', action='append' if self.allow_multi else None,
+                            dest='config_files',
+                            help='the path to the configuration file')
+
+    def run(self, args: argparse.Namespace) -> None:
+        """
+        Run the middleware.
+        """
+        import anyconfig  # pylint: disable=import-outside-toplevel
+
+        defaults = args.__dict__ if self.defaults is True else self.defaults
+
+        results = []
+        for filename in args.config_files or []:
+            if filename == '-':
+                result = dict(defaults)
+            else:
+                data = anyconfig.load(filename, ignore_missing=self.ignore_missing)
+                result = merge_dicts(
+                    defaults, data,
+                    overwrite=True,
+                    recurse=self.merge,
+                )
+            results.append(result)
+
+        args.__dict__.update({'config_data': results})
+
+
+class InlineConfigMiddleware(IMiddleware):
+    """
+    Inline configuration middleware.
+    """
+
+    def __init__(self, *, overwrite: bool = True, merge: bool = True) -> None:
+        """
+        This middleware registers an argument - that can be specified multiple times -
+        that allows to override configuration values/arguments using a string syntax.
+
+        Each argument should be in the form of `KEY=VALUE`. The VALUE will be parsed
+        as a JSON string. If it's not valid JSON, it will be assumed to be a string.
+
+        Example values:
+            - `foo=42`: int
+            - `foo=42.0`: float
+            - `foo=null`: None
+            - `foo=bar`: str
+            - `foo=[1,2,3]`: list
+            - `foo={"hello": "world"}`: dict
+            - `foo=true`: bool
+            - `foo="null"`: str
+
+        The *overwrite* and *merge* arguments work the same as the `ConfigMiddleware`.
+        """
+        self.overwrite = overwrite
+        self.merge = merge
+
+    def configure(self, parser: argparse.ArgumentParser) -> None:
+        """
+        Configure the middleware arguments.
+        """
+        parser.add_argument('-e', '--env', action='append',
+                            dest='config_env',
+                            help='additional configuration values to pass, as JSON strings')
+
+    def run(self, args: argparse.Namespace) -> None:
+        """
+        Run the middleware.
+        """
+        items = []
+        for item in args.config_env or []:
+            if '=' in item:
+                key, value = item.split('=', 1)
+                try:
+                    value = json.loads(value)
+                except json.decoder.JSONDecodeError:
+                    pass
+                items.append({key: value})
+
+        result = merge_dicts(
+            args.__dict__, *items,
+            overwrite=self.overwrite,
+            recurse=self.merge,
+        )
+
+        args.__dict__.update(result)
+        del args.__dict__['config_env']
+
+
+class EnvironmentConfigMiddleware(IMiddleware):
+    """
+    Environment variables middleware.
+    """
+
+    def __init__(self, prefix: str, *, lower: bool = True, overwrite: bool = False,
+                 merge: bool = True) -> None:
+        """
+        This middleware allows for configuration values/arguments to be overriden using
+        environment variables.
+
+        The *prefix* is a string argument that defines the prefix (case sensitive) to
+        look for in environment variables. Per example, with a prefix of `TEST_`, the
+        variables `TEST_FOO` and `TEST_BAR` will be matched.
+
+        The `lower` argument defines whether to lower case the variable key - everything
+        after the prefix - when storing it. If enabled, in `TEST_FOO=1`, the resulting
+        argument key will be `foo` rather than `FOO`.
+
+        The values parsing rules, *overwrite* and *merge* arguments work the same way as
+        the `InlineConfigMiddleware`.
+        """
+        self.lower = lower
+        self.prefix = prefix
+        self.overwrite = overwrite
+        self.merge = merge
+
+    def run(self, args: argparse.Namespace) -> None:
+        """
+        Run the middleware.
+        """
+        data = {}
+        for key, value in os.environ.items():
+            if not key.startswith(self.prefix):
+                continue
+
+            if self.lower:
+                key = key[len(self.prefix):].lower()
+
+            try:
+                value = json.loads(value)
+                data[key] = value
+            except json.decoder.JSONDecodeError:
+                data[key] = value
+
+        result = merge_dicts(
+            args.__dict__, data,
+            overwrite=self.overwrite,
+            recurse=self.merge,
+        )
+        args.__dict__.update(result)
+
+
+class InjectMiddleware(IMiddleware):
+    """
+    Default arguments injection middleware.
+    """
+
+    def __init__(self, defaults: dict) -> None:
+        """
+        This middleware injects defaults for any parameter that wasn't specified at
+        runtime.
+        """
+        self.defaults = defaults
+
+    def run(self, args: argparse.Namespace) -> None:
+        """
+        Run the middleware.
+        """
+        result = merge_dicts(
+            args.__dict__, self.defaults,
+            overwrite=False, recurse=True,
+        )
+
+        args.__dict__.update(result)

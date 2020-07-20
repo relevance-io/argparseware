@@ -8,9 +8,12 @@ simple syntax, improving reusability, while not compromising or reinventing
 the programming interfaces they already know.
 """
 
+from .core import ArgumentParser
+
+
 # Package version
-__version__ = '1.0.0'
-__versiont__ = (1, 0, 0)
+__version__ = '0.9.0'
+__versiont__ = (0, 9, 0)
 
 # Author information
 __author__ = 'Francis Lacroix'
