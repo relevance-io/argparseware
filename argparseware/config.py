@@ -4,6 +4,7 @@ configuration files, environment variables and the like.
 """
 
 import os
+import sys
 import json
 import argparse
 import typing
@@ -18,7 +19,8 @@ class ConfigMiddleware(IMiddleware):
     """
 
     def __init__(self, defaults: typing.List[str] = None, *, allow_multi: bool = False,
-                 ignore_missing: bool = False, overwrite: bool = False, merge: bool = True) -> None:
+                 ignore_missing: bool = False, overwrite: bool = False, merge: bool = True,
+                 search_paths: typing.List[str] = sys.path) -> None:
         """
         This middleware loads configuration files and merge their contents into the
         parser's namespace object.
@@ -40,12 +42,15 @@ class ConfigMiddleware(IMiddleware):
         the *overwrite* parameter for duplicate values. If *merge* is false and *overwrite*
         is true, a value that is a dict that exists in both source and destination will be
         completely overwritten by the configuration file value.
+
+        The *search_path* is a list of paths to search into when the path is relative.
         """
         self.defaults = defaults or []
         self.allow_multi = allow_multi
         self.ignore_missing = ignore_missing
         self.overwrite = overwrite
         self.merge = merge
+        self.search_paths = search_paths or []
 
     def configure(self, parser: argparse.ArgumentParser) -> None:
         """
@@ -62,6 +67,14 @@ class ConfigMiddleware(IMiddleware):
         import anyconfig  # pylint: disable=import-outside-toplevel
 
         files = args.config_file or self.defaults
+
+        for filename in list(files):
+            if os.path.isabs(filename):
+                continue
+            for path in self.search_paths:
+                if os.path.isfile(filename) or os.path.islink(filename):
+                    files.append(os.path.join(path, filename))
+
         data = anyconfig.load(files, ignore_missing=self.ignore_missing)
         result = merge_dicts(
             args.__dict__, data,
