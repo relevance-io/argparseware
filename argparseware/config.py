@@ -72,8 +72,11 @@ class ConfigMiddleware(IMiddleware):
             if os.path.isabs(filename):
                 continue
             for path in self.search_paths:
-                if os.path.isfile(filename) or os.path.islink(filename):
-                    files.append(os.path.join(path, filename))
+                pathname = os.path.join(path, filename)
+                if os.path.isfile(pathname) or os.path.islink(pathname):
+                    files.append(pathname)
+                    if filename in files:
+                        files.remove(filename)
 
         data = anyconfig.load(files, ignore_missing=self.ignore_missing)
         result = merge_dicts(
