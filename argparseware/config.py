@@ -151,18 +151,20 @@ class ConfigListMiddleware(IMiddleware):
         args.__dict__.update({'config_data': results})
 
 
-class InlineConfigMiddleware(IMiddleware):
+class InlineOptionMiddleware(IMiddleware):
     """
-    Inline configuration middleware.
+    Inline option middleware.
     """
 
-    def __init__(self, *, overwrite: bool = True, merge: bool = True) -> None:
+    def __init__(self, *args, dest: str = None, help: str = None) -> None:
         """
-        This middleware registers an argument - that can be specified multiple times -
-        that allows to override configuration values/arguments using a string syntax.
+        This middleware registers an argument that allows to specify configuration
+        values/arguments using a string syntax, which can be used mutiple times.
+
+        The *dest* and *help* arguments works like the `ArgumentParser` equivalents.
 
         Each argument should be in the form of `KEY=VALUE`. The VALUE will be parsed
-        as a JSON string. If it's not valid JSON, it will be assumed to be a string.
+        as a JSON string. If it's not valid JSON, it will be assumed to be a string.//
 
         Example values:
             - `foo=42`: int
@@ -173,8 +175,56 @@ class InlineConfigMiddleware(IMiddleware):
             - `foo={"hello": "world"}`: dict
             - `foo=true`: bool
             - `foo="null"`: str
+        """
+        self.args = args
+        self.dest = dest
+        self.help = help
+
+    def configure(self, parser: argparse.ArgumentParser) -> None:
+        """
+        Configure the middleware arguments.
+        """
+        kwargs = {}
+        if self.dest:
+            kwargs['dest'] = self.dest
+        if self.help:
+            kwargs['help'] = self.help
+
+        arg = parser.add_argument(*self.args, action='append', **kwargs)
+        self.dest = arg.dest
+
+    def run(self, args: argparse.Namespace) -> None:
+        """
+        Run the middleware.
+        """
+        data = getattr(args, self.dest)
+
+        items = []
+        for item in data or []:
+            if '=' in item:
+                key, value = item.split('=', 1)
+                try:
+                    value = json.loads(value)
+                except json.decoder.JSONDecodeError:
+                    pass
+                items.append({key: value})
+
+        args.__dict__.update({self.dest: list(items)})
+
+
+class InlineConfigMiddleware(IMiddleware):
+    """
+    Inline configuration middleware.
+    """
+
+    def __init__(self, *, overwrite: bool = True, merge: bool = True) -> None:
+        """
+        This middleware registers an argument - that can be specified multiple times -
+        that allows to override configuration values/arguments using a string syntax.
 
         The *overwrite* and *merge* arguments work the same as the `ConfigMiddleware`.
+
+        The parsing rules are the same as the `InlineConfigMiddleware`.
         """
         self.overwrite = overwrite
         self.merge = merge
