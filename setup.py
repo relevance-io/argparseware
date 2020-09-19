@@ -46,8 +46,8 @@ setup(
 
     python_requires='>=3.6',
     setup_requires=[
-        'Sphinx>=1.6.5,<2',
-        'pylint>=1.7.4,<2',
+        'Sphinx>=3.0.3',
+        'pylint>=2.5.2',
     ],
 
     tests_require=[],

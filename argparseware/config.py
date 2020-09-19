@@ -156,7 +156,7 @@ class InlineOptionMiddleware(IMiddleware):
     Inline option middleware.
     """
 
-    def __init__(self, *args, dest: str = None, help: str = None) -> None:
+    def __init__(self, *args, dest: str = None, help: str = None) -> None:  # pylint:disable=redefined-builtin
         """
         This middleware registers an argument that allows to specify configuration
         values/arguments using a string syntax, which can be used mutiple times.
