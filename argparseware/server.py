@@ -121,13 +121,14 @@ class GunicornServerMiddleware(ServerMiddleware, metaclass=abc.ABCMeta):
     """
     # pylint: disable=import-outside-toplevel
 
-    def __init__(self, *args, count: int = None, timeout: int = 120) -> None:
+    def __init__(self, *args, count: int = None, timeout: int = 120,
+                 worker_class: str = 'sync', **kwargs) -> None:
         """
         This middleware wraps a WSGI application callable to run through
         a gunicorn server.
 
-        The *count* is the default count of workers to pre-fork. If omitted, it
-        defaults to the number of available CPUs.
+        The *count* is the default count of workers to pre-fork or the number of threads
+        if using gthread. If omitted, it defaults to the number of available CPUs.
 
         The *timeout* is the default count for a request timeout, after which
         the pre-fork worker will bail and terminate a pending request.
@@ -135,7 +136,9 @@ class GunicornServerMiddleware(ServerMiddleware, metaclass=abc.ABCMeta):
         super().__init__(*args)
         import multiprocessing
         self.count = count or multiprocessing.cpu_count()
+        self.worker_class = worker_class
         self.timeout = timeout
+        self.kwargs = kwargs
 
     def configure(self, parser: argparse.ArgumentParser) -> None:
         """
@@ -209,15 +212,39 @@ class GunicornServerMiddleware(ServerMiddleware, metaclass=abc.ABCMeta):
                 return wsgi_app
 
         host, port = self.parse_addr(addr)
+
         args = [
             '--bind', '{0}:{1}'.format(host, port),
             '--log-level', logging.getLevelName(log_level).lower(),
-            '--workers', str(count),
+            '--workers' if self.worker_class != 'gthread' else '--threads', str(count),
             '--timeout', str(timeout),
             '--preload' if preload else '',
             '--access-logfile', '-',
         ]
 
+        if self.worker_class == 'gthread':
+            args += ['--workers', '1']
+
+        for key, value in self.kwargs.items():
+            key = key.replace('_', '-')
+            args += ['--{0}'.format(key), value]
+
         sys.argv = [sys.argv[0]]
         os.environ['GUNICORN_CMD_ARGS'] = ' '.join(args)
         return WSGIServer('').run()
+
+
+class GeventServerMiddleware(ServerMiddleware, metaclass=abc.ABCMeta):
+    """
+    Server middleware that wraps gevent for WSGI applicications.
+    """
+    # pylint: disable=import-outside-toplevel
+
+    def run(self, args: argparse.Namespace) -> None:
+        """
+        Run the middleware.
+        """
+        from gevent.pywsgi import WSGIServer
+        host, port = self.parse_addr(args.listen_addr)
+        server = WSGIServer((host, port), self.app)
+        server.serve_forever()
