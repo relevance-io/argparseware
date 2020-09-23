@@ -9,6 +9,7 @@ import sys
 import argparse
 import typing
 import logging
+import signal
 
 from .core import IMiddleware
 from .common import LoggingMiddleware
@@ -57,6 +58,12 @@ class ServerMiddleware(IMiddleware, metaclass=abc.ABCMeta):
         """
         This method should be implemented by subclasses to actually run a server
         based on the source arguments.
+        """
+
+    @abc.abstractmethod
+    def stop(self) -> None:
+        """
+        Stop the server.
         """
 
 
@@ -114,6 +121,13 @@ class FlaskServerMiddleware(ServerMiddleware, metaclass=abc.ABCMeta):
             self.app.args = args
             self.app.run(host=host, port=port, debug=args.flask_debug)
 
+    def stop(self) -> None:
+        """
+        Stop the server.
+        """
+        raise NotImplementedError()
+
+
 
 class GunicornServerMiddleware(ServerMiddleware, metaclass=abc.ABCMeta):
     """
@@ -139,6 +153,7 @@ class GunicornServerMiddleware(ServerMiddleware, metaclass=abc.ABCMeta):
         self.worker_class = worker_class
         self.timeout = timeout
         self.kwargs = kwargs
+        self.server = None
 
     def configure(self, parser: argparse.ArgumentParser) -> None:
         """
@@ -171,17 +186,19 @@ class GunicornServerMiddleware(ServerMiddleware, metaclass=abc.ABCMeta):
         except AttributeError:
             log_level = 'info'
 
-        self.run_server(
+        self.server = self.create_server(
             args.listen_addr,
             count=args.prefork_count,
             timeout=args.request_timeout,
             preload=args.prefork_preload,
             log_level=log_level,
         )
+        self.server.run()
 
-    def run_server(self, addr, *, count: int, timeout: int, preload: bool, log_level: int):
+    def create_server(self, addr, *, count: int, timeout: int, preload: bool,
+                   log_level: int) -> 'WSGIApplication':
         """
-        Run the application server through gunicorn.
+        Create the application server through gunicorn.
 
         This function creates and runs the application server for the *app* WSGI application.
         It will listen bind to *host* on *port*.
@@ -200,16 +217,27 @@ class GunicornServerMiddleware(ServerMiddleware, metaclass=abc.ABCMeta):
         package values.
         """
         from gunicorn.app.wsgiapp import WSGIApplication
+        from gunicorn.arbiter import Arbiter
 
         wsgi_app = self.app
         class WSGIServer(WSGIApplication):
             """The WSGI Server implementation."""
+
+            def __init__(self, *args, **kwargs):
+                super().__init__(*args, **kwargs)
+                self.arbiter = Arbiter(self)
 
             def init(self, parser, opts, args):
                 pass
 
             def load(self):
                 return wsgi_app
+
+            def run(self):
+                self.arbiter.run()
+
+            def stop(self):
+                self.arbiter.signal(signal.SIGINT, None)
 
         host, port = self.parse_addr(addr)
 
@@ -231,7 +259,16 @@ class GunicornServerMiddleware(ServerMiddleware, metaclass=abc.ABCMeta):
 
         sys.argv = [sys.argv[0]]
         os.environ['GUNICORN_CMD_ARGS'] = ' '.join(args)
-        return WSGIServer('').run()
+        return WSGIServer('')
+
+    def stop(self) -> None:
+        """
+        Stop the server.
+        """
+        if not self.server:
+            raise IOError('server is not running')
+        self.server.stop()
+        self.server = None
 
 
 class GeventServerMiddleware(ServerMiddleware, metaclass=abc.ABCMeta):
@@ -240,11 +277,24 @@ class GeventServerMiddleware(ServerMiddleware, metaclass=abc.ABCMeta):
     """
     # pylint: disable=import-outside-toplevel
 
+    def __init__(self, *args, **kwargs):
+        """
+        Initialize the middleware.
+        """
+        super().__init__(*args, **kwargs)
+        self.server = None
+
     def run(self, args: argparse.Namespace) -> None:
         """
         Run the middleware.
         """
         from gevent.pywsgi import WSGIServer
         host, port = self.parse_addr(args.listen_addr)
-        server = WSGIServer((host, port), self.app)
-        server.serve_forever()
+        self.server = WSGIServer((host, port), self.app)
+        self.server.serve_forever()
+
+    def stop(self) -> None:
+        """
+        Stop the server.
+        """
+        self.server.stop()

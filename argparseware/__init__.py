@@ -12,8 +12,8 @@ from .core import ArgumentParser
 
 
 # Package version
-__version__ = '0.9.4'
-__versiont__ = (0, 9, 4)
+__version__ = '0.9.5'
+__versiont__ = (0, 9, 5)
 
 # Author information
 __author__ = 'Francis Lacroix'
