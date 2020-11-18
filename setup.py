@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import distutils
-import distutils_cmd
 from setuptools import setup
 from setuptools import find_packages
 
@@ -36,13 +35,6 @@ setup(
 
     packages=find_packages(exclude=['tests', 'tests.*']),
     provides=[main.__name__],
-
-    cmdclass={
-        'clean': distutils_cmd.CleanCommand,
-        'build_apidoc': distutils_cmd.BuildApidocCommand,
-        'build_sphinx': distutils_cmd.BuildSphinxCommand,
-        'lint': distutils_cmd.LintCommand,
-    },
 
     python_requires='>=3.6',
     setup_requires=[
