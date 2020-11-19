@@ -1,6 +1,4 @@
-whenEnv(BRANCH_NAME: ['develop', 'master', 'release']) {
-    pythonBuild(
-        publish: false,
-        upload: false,
-    )
-}
+pythonBuild(
+    publish: ['develop', 'master', 'release'],
+    upload: ['release'],
+)
