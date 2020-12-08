@@ -1,12 +1,7 @@
 #!/usr/bin/env python3
 
 from setuptools import setup
-from setuptools import find_packages
 
-
-# Package configuration
-package_name = 'argparseware'
-version = '0.9.6'
 
 # Optional dependencies
 extras_require = {
@@ -30,11 +25,5 @@ for key in extras_require:
 
 # Setup script
 setup(
-    name=package_name,
-    version=version,
-    packages=find_packages(exclude=['tests', 'tests.*']),
-    python_requires='>3.6',
-    test_suite='tests',
-    install_requires=list(open('requirements.txt')),
     extras_require=extras_require,
 )
