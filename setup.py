@@ -1,57 +1,40 @@
 #!/usr/bin/env python3
 
-import distutils
 from setuptools import setup
 from setuptools import find_packages
 
-import argparseware as main
 
+# Package configuration
+package_name = 'argparseware'
+version = '0.9.6'
 
-setup(
-    name=main.__name__,
-    version=main.__version__,
-
-    description=main.__doc__.split('\n')[1].strip(),
-    long_description=main.__doc__.strip(),
-    # url='http://www.relevance.io/argparseware',
-    author='Relevance.io',
-    author_email='info@relevance.io',
-    maintainer=main.__author__,
-    maintainer_email=main.__author_email__,
-
-    license=main.__license__,
-    platforms=['any'],
-    classifiers=[
-        'Development Status :: 5 - Production/Stable',
-        'Environment :: Console',
-        'Intended Audience :: Developers',
-        'License :: OSI Approved :: MIT License',
-        'Operating System :: OS Independent',
-        'Programming Language :: Python',
-        'Programming Language :: Python :: 3',
-        'Topic :: Software Development :: Libraries',
-        'Topic :: Utilities',
-    ],
-
-    packages=find_packages(exclude=['tests', 'tests.*']),
-    provides=[main.__name__],
-
-    python_requires='>=3.6',
-    setup_requires=[
-        'Sphinx>=3.0.3',
-        'pylint>=2.5.2',
-    ],
-
-    tests_require=[],
-    test_suite='tests',
-
-    install_requires=[],
-
-    extras_requires=[
+# Optional dependencies
+extras_require = {
+    'config': [
         'anyconfig>=0.9.1,<0.10',
         'PyYAML>=3.12,<4',
+    ],
+    'wsgi': [
         'Flask>=1.1.1,<2',
         'gunicorn>=20.0.4,<21',
         'gevent>=20.6.2,<21',
     ],
+}
+
+# All dependencies
+extras_require['all'] = []
+for key in extras_require:
+    if key != 'all':
+        extras_require['all'] += extras_require[key]
+
+
+# Setup script
+setup(
+    name=package_name,
+    version=version,
+    packages=find_packages(exclude=['tests', 'tests.*']),
+    python_requires='>3.6',
+    test_suite='tests',
+    install_requires=list(open('requirements.txt')),
+    extras_require=extras_require,
 )

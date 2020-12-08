@@ -265,10 +265,9 @@ class GunicornServerMiddleware(ServerMiddleware, metaclass=abc.ABCMeta):
         """
         Stop the server.
         """
-        if not self.server:
-            raise IOError('server is not running')
-        self.server.stop()
-        self.server = None
+        if self.server:
+            self.server.stop()
+            self.server = None
 
 
 class GeventServerMiddleware(ServerMiddleware, metaclass=abc.ABCMeta):
@@ -297,4 +296,6 @@ class GeventServerMiddleware(ServerMiddleware, metaclass=abc.ABCMeta):
         """
         Stop the server.
         """
-        self.server.stop()
+        if self.server:
+            self.server.stop()
+            self.server = None
