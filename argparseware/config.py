@@ -9,8 +9,8 @@ import json
 import argparse
 import typing
 
-from .core import merge_dicts
 from .core import IMiddleware
+from .utils import merge_dicts
 
 
 class ConfigMiddleware(IMiddleware):

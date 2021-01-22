@@ -22,7 +22,6 @@ for key in extras_require:
     if key != 'all':
         extras_require['all'] += extras_require[key]
 
-
 # Setup script
 setup(
     extras_require=extras_require,

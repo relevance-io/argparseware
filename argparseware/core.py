@@ -8,33 +8,6 @@ import argparse
 import typing
 
 
-def merge_dicts(data: dict, *args, overwrite: bool = True, recurse: bool = True) -> dict:
-    """
-    Merge dictionaries recursively and return the result.
-
-    If *recurse* is true, the dictionaries are merged recursively. When *overwrite*
-    is true, any value that exist in previous dictionaries will be overwritten with the
-    latest (until that value is also a dictionary and *recurse* is true).
-    """
-    result = dict(data)
-
-    for item in args:
-        for key, value in item.items():
-            data_value = data.get(key)
-
-            if isinstance(value, dict) and isinstance(data_value, dict) and recurse:
-                result[key] = merge_dicts(data_value, value, overwrite=overwrite)
-            elif key in data:
-                if overwrite:
-                    result[key] = value
-                else:
-                    result[key] = data_value
-            else:
-                result[key] = value
-
-    return result
-
-
 def middleware(func: typing.Callable):
     """
     This method is an alias for `WrapperMiddleware` to be used
@@ -138,6 +111,8 @@ class ArgumentParser(argparse.ArgumentParser):
         """
         Override the parent method to automatically configure middleware.
         """
+        # NOTE: the reason we're not using a for-loop here is to allow middleware to
+        # add other middleware within their configure method.
         index = 0
         while True:
             try:
@@ -154,7 +129,7 @@ class ArgumentParser(argparse.ArgumentParser):
         Run the argument parser.
 
         This method works the same way as `parse_args` returning a `Namespace`
-        object with the arguments. However, unlike the former once the arguments
+        object with the arguments. However, unlike the former, once the arguments
         have been parsed, each registered middleware will have its `run` method
         invoked and the resulting namespace object will be returned.
         """
