@@ -30,6 +30,7 @@ Some bundled middleware require optional dependencies:
 - `ConfigMiddleware` requires `anyconfig`
 - `FlaskServerMiddleware` requires `flask`
 - `GunicornServerMiddleware` requires `gunicorn`
+- `GeventServerMiddleware` requires `gevent`
 
 ### Installation
 
@@ -176,37 +177,6 @@ While it's great to have code reuse, sometimes you want the best of both worlds.
 
     if args.test == 'hello world':
         print('hello world')
-
-## Building
-
-The Python artifacts can be build using the standard `setup.py` script:
-
-    ./setup.py sdist
-    ./setup.py bdist_egg
-    ./setup.py bdist_wheel
-
-...to build a source distribution, a binary egg distribution and a wheel distribution, respectively.
-
-## Documentation
-
-The code documentation is placed in the `docs/` directory. To generate it, first, generate
-the API documentation from the code using a custom `setup.py` command:
-
-    ./setup.py build_apidoc
-
-Then, generate the complete documentation using Sphinx:
-
-    ./setup.py build_sphinx
-
-This will generate the documentation files in the `build/docs/` directory.
-
-## Testing
-
-The `setup.py` script provides commands to test the code before distributing it. Run
-them with:
-
-    ./setup.py test         # runs the tests/ directory
-    ./setup.py lint         # validates code syntax
 
 ## License
 
