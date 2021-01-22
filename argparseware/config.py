@@ -19,7 +19,8 @@ class ConfigMiddleware(IMiddleware):
     """
 
     def __init__(self, defaults: typing.List[str] = None, *, allow_multi: bool = False,
-                 ignore_missing: bool = False, overwrite: bool = False, merge: bool = True,
+                 ignore_missing: bool = False, node: typing.Union[str, typing.List[str]] = None,
+                 overwrite: bool = False, merge: bool = True,
                  search_paths: typing.List[str] = sys.path) -> None:
         """
         This middleware loads configuration files and merge their contents into the
@@ -32,6 +33,9 @@ class ConfigMiddleware(IMiddleware):
 
         If *ignore_missing* is enabled, configuration files that do not exist will not
         cause exceptions to be raised.
+
+        The *node* argument is the path of the node to extract. If omitted, the root
+        document is used.
 
         When *overwrite* is true, values that already exist in the parser's namespace
         will be overwritten by values in the configuration files. Otherwise, if a duplicate
@@ -48,6 +52,7 @@ class ConfigMiddleware(IMiddleware):
         self.defaults = defaults or []
         self.allow_multi = allow_multi
         self.ignore_missing = ignore_missing
+        self.node = node
         self.overwrite = overwrite
         self.merge = merge
         self.search_paths = search_paths or []
@@ -84,6 +89,13 @@ class ConfigMiddleware(IMiddleware):
             overwrite=self.overwrite,
             recurse=self.merge,
         )
+
+        if self.node:
+            ref = result
+            node = [self.node] if isinstance(self.node, str) else self.node
+            for item in node:
+                ref = result.get(item, {})
+            result = ref
 
         args.__dict__.update(result)
 
