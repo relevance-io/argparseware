@@ -7,6 +7,7 @@ import os
 import abc
 import sys
 import argparse
+import signal
 import typing
 import logging
 import signal
@@ -289,6 +290,12 @@ class GeventServerMiddleware(ServerMiddleware, metaclass=abc.ABCMeta):
         """
         from gevent.pywsgi import WSGIServer
         host, port = self.parse_addr(args.listen_addr)
+
+        def shutdown_server(signum, _frame):
+            """ Handle the shutdown signal. """
+            self.stop()
+
+        signal.signal(signal.SIGINT, shutdown_server)
         self.server = WSGIServer((host, port), self.app)
         self.server.serve_forever()
 
@@ -298,4 +305,5 @@ class GeventServerMiddleware(ServerMiddleware, metaclass=abc.ABCMeta):
         """
         if self.server:
             self.server.stop()
+            self.server.close()
             self.server = None
