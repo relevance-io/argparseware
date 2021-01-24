@@ -305,5 +305,9 @@ class GeventServerMiddleware(ServerMiddleware, metaclass=abc.ABCMeta):
         """
         if self.server:
             self.server.stop()
-            self.server.close()
-            self.server = None
+            try:
+                self.server.close()
+            except Exception:
+                pass
+            finally:
+                self.server = None
