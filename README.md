@@ -36,31 +36,39 @@ Some bundled middleware require optional dependencies:
 
 Since this is a standard Python package, install with:
 
-    pip install argparseware
+```shell
+pip install argparseware
+```
 
 #### Development mode
 
 Again, as this is a standard Python package, install in development (editable) mode with:
 
-    pip install -e .
+```shell
+pip install -e .
+```
 
 ## Usage
 
 This package can be used the same way as you would `argparse`:
 
-    import argparseware
+```python
+import argparseware
 
-    parser = argparseware.ArgumentParser(
-        prog='myprog',
-        description='Some test program',
-    )
-    parser.add_argument('--arg', help='some arg')
+parser = argparseware.ArgumentParser(
+    prog='myprog',
+    description='Some test program',
+)
+parser.add_argument('--arg', help='some arg')
 
-    namespace = parser.parse_args()
+namespace = parser.parse_args()
+```
 
 ...then run with:
 
-    python3 your-script.py --arg foo
+```python
+python3 your-script.py --arg foo
+```
 
 ### What is middleware?
 
@@ -71,31 +79,35 @@ Execution is the step that is executed after all arguments have been parsed. It 
 a function that accepts the `Namespace` object from argparse as its first argument and does
 something with it:
 
-    parser = argparseware.ArgumentParser()
-    parser.add_argument('--some-arg', 'some generic argument')
+```python
+parser = argparseware.ArgumentParser()
+parser.add_argument('--some-arg', 'some generic argument')
 
-    @parser.middleware
-    def my_middleware(args):
-        print('some_arg value is:', args.some_arg)
+@parser.middleware
+def my_middleware(args):
+    print('some_arg value is:', args.some_arg)
 
-    parser.run()
+parser.run()
+```
 
 It's useful for executing and reusing code that is run *after* the arguments are parsed.
 
 While it's pretty useful in itself, this is an argparse extension, so you probably will want
 to be able to define your own arguments:
 
-    parser = argparseware.ArgumentParser()
+```python
+parser = argparseware.ArgumentParser()
 
-    @parser.middleware
-    def my_middleware(args):
-        print('some_arg value is:', args.some_arg)
+@parser.middleware
+def my_middleware(args):
+    print('some_arg value is:', args.some_arg)
 
-    @my_middleware.configure
-    def config_my_middleware(parser):
-        parser.add_argument('--some-arg', help='some arg as a string')
+@my_middleware.configure
+def config_my_middleware(parser):
+    parser.add_argument('--some-arg', help='some arg as a string')
 
-    parser.run()
+parser.run()
+```
 
 The `configure` step is executed *before* the arguments are parsed, so this is where you'll
 want to add your custom arguments or perform validation on other defined arguments.
@@ -108,16 +120,20 @@ for more useful ways of using **argparseware**.
 If you already have existing middleware in a common library, or if you want to use
 some of the bundled middleware, for example, the logging middleware:
 
-    import argparseware
-    from argparseware.common import LoggingMiddleware
+```python
+import argparseware
+from argparseware.common import LoggingMiddleware
 
-    parser = argparseware.ArgumentParser()
-    parser.add_middleware(LoggingMiddleware())
-    parser.run()
+parser = argparseware.ArgumentParser()
+parser.add_middleware(LoggingMiddleware())
+parser.run()
+```
 
 ...then run with:
 
-    python3 your-script.py --verbose
+```shell
+python3 your-script.py --verbose
+```
 
 The above will automatically configure logging after the arguments are parsed.
 
@@ -126,40 +142,44 @@ The above will automatically configure logging after the arguments are parsed.
 The easiest way to define your own reusable middleware component is to use the
 `middleware` decorator:
 
-    import argparseware
+```python
+import argparseware
 
-    @argparseware.middleware
-    def my_middleware(args):
-        print('some_arg value is "foo":', args.some_arg == 'foo')
+@argparseware.middleware
+def my_middleware(args):
+    print('some_arg value is "foo":', args.some_arg == 'foo')
 
-    @my_middleware.configure
-    def config_my_middleware(parser):
-        parser.add_argument('--some-arg', 'some argument, try value: foo')
+@my_middleware.configure
+def config_my_middleware(parser):
+    parser.add_argument('--some-arg', 'some argument, try value: foo')
 
-    parser = argparseware.ArgumentParser(prog='testprog')
-    parser.add_middleware(my_middleware)
-    parser.run()
+parser = argparseware.ArgumentParser(prog='testprog')
+parser.add_middleware(my_middleware)
+parser.run()
+```
 
 ### Complex middleware
 
 With some middleware, you'll want to be able to customize it and pass arguments
 to it. This can be done with the `IMiddleware` abstract class:
 
-    from argparseware.core import IMiddleware
+```
+from argparseware.core import IMiddleware
 
-    class MyMiddleware(IMiddleware):
-        def __init__(self, default_value):
-            self.default_value = default_value
+class MyMiddleware(IMiddleware):
+    def __init__(self, default_value):
+        self.default_value = default_value
 
-        def configure(self, parser):
-            parser.add_argument('--some-arg', default=self.default, help='some arg')
+    def configure(self, parser):
+        parser.add_argument('--some-arg', default=self.default, help='some arg')
 
-        def run(self, args):
-            print('you passed', args.some_arg, 'default was', self.default_value)
+    def run(self, args):
+        print('you passed', args.some_arg, 'default was', self.default_value)
 
-    parser = argparseware.ArgumentParser()
-    parser.add_middleware(MyMiddleware(42))
-    parser.run()
+parser = argparseware.ArgumentParser()
+parser.add_middleware(MyMiddleware(42))
+parser.run()
+```
 
 ### Adapting existing codebases
 
@@ -167,16 +187,18 @@ While it's great to have code reuse, sometimes you want the best of both worlds.
 **argparseware**, the parser's `run` method returns the same thing as the argparse
 `parse_args` method would, so you can easily adapt existing code:
 
-    import argparseware
-    from argparseware.common import LoggingMiddleware
+```python
+import argparseware
+from argparseware.common import LoggingMiddleware
 
-    parser = argparseware.ArgumentParser()
-    parser.add_argument('--test')
-    parser.add_middleware(LoggingMiddleware())
-    args = parser.run()
+parser = argparseware.ArgumentParser()
+parser.add_argument('--test')
+parser.add_middleware(LoggingMiddleware())
+args = parser.run()
 
-    if args.test == 'hello world':
-        print('hello world')
+if args.test == 'hello world':
+    print('hello world')
+```
 
 ## License
 

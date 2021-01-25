@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 from setuptools import setup
+from setuptools import find_packages
 
 
 # Optional dependencies
@@ -24,5 +25,9 @@ for key in extras_require:
 
 # Setup script
 setup(
+    long_description=open('README.md').read(),
+    long_description_content_type='text/markdown',
+    packages=find_packages(exclude=['tests', 'tests.*']),
+    install_requires=list(open('requirements.txt')),
     extras_require=extras_require,
 )
