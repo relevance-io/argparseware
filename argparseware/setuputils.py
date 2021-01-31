@@ -189,7 +189,7 @@ class ConsoleScriptsMiddleware(IMiddleware):
                 """ Forward a signal to the child process. """
                 proc.send_signal(signum)
 
-            for signum in set(signal.Signals) - {signal.SIGKILL, signal.SIGSTOP}:
+            for signum in set(signal.Signals) - {signal.SIGKILL, signal.SIGSTOP}:  # pylint:disable=no-member
                 signal.signal(signum, forward_signal)
 
             try:

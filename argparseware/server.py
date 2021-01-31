@@ -10,7 +10,6 @@ import argparse
 import signal
 import typing
 import logging
-import signal
 
 from .core import IMiddleware
 from .common import LoggingMiddleware
@@ -238,6 +237,7 @@ class GunicornServerMiddleware(ServerMiddleware, metaclass=abc.ABCMeta):
                 self.arbiter.run()
 
             def stop(self):
+                """ Allows the server to be stopped on demand. """
                 self.arbiter.signal(signal.SIGINT, None)
 
         host, port = self.parse_addr(addr)
@@ -291,7 +291,7 @@ class GeventServerMiddleware(ServerMiddleware, metaclass=abc.ABCMeta):
         from gevent.pywsgi import WSGIServer
         host, port = self.parse_addr(args.listen_addr)
 
-        def shutdown_server(signum, _frame):
+        def shutdown_server(_signum, _frame):
             """ Handle the shutdown signal. """
             self.stop()
 
