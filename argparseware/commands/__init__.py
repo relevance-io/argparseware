@@ -1,3 +1,8 @@
+"""
+This package provides middleware that can be used to provide subcommands to
+an argument parser.
+"""
+
 import typing
 import sys
 import argparse
@@ -109,7 +114,7 @@ class CommandsMiddleware(IMiddleware):
         """
         self.commands = list(args)
         self.dest = dest
-        self.parser = None
+        self.argparser = None
 
     def add_command(self, *args, **kwargs) -> Command:
         """
@@ -124,9 +129,13 @@ class CommandsMiddleware(IMiddleware):
         """
         Configure the middleware.
         """
-        self.parser = parser
+        if self.argparser is parser:
+            return parser
+
+        self.argparser = parser
         for command in sorted(self.commands, key=lambda x: x.command):
             command.apply(parser)
+
         return parser
 
     def run(self, args: argparse.Namespace) -> None:
@@ -146,14 +155,19 @@ class CommandsMiddleware(IMiddleware):
                 break
 
         name = ' '.join(parts)
-        for command in self.commands:
-            if command.command == name:
-                command.handler(args)
-                return None
+        if self.dest:
+            setattr(args, self.dest, name)
 
-        if self.parser:
+        for command in self.commands:
+            if command.command != name:
+                continue
+            if command.handler:
+                command.handler(args)
+            return None
+
+        if self.argparser:
             sys.argv.append('--help')
-            self.parser.run()
+            self.argparser.run()
 
 
 class CommandsArgumentParser(ArgumentParser):
