@@ -2,10 +2,13 @@
 This module provides utility functions that can be used in middleware.
 """
 
+import typing
 import os
+import json
 
 
-def merge_dicts(data: dict, *args, overwrite: bool = True, recurse: bool = True) -> dict:
+def merge_dicts(data: dict, *args: typing.List[dict], overwrite: bool = True,
+                recurse: bool = True) -> dict:
     """
     Merge dictionaries recursively and return the result.
 
@@ -60,3 +63,24 @@ def which(program: str) -> str:
             return filename
 
     return None
+
+
+def parse_inline_options(data: typing.List[str]) -> typing.List[typing.Tuple[str, object]]:
+    """
+    Parse a list of inline options.
+
+    If *as_list* is enabled, each item is returned as a tuple
+
+    """
+    items = []
+
+    for item in data or []:
+        if '=' in item:
+            key, value = item.split('=', 1)
+            try:
+                value = json.loads(value)
+            except json.decoder.JSONDecodeError:
+                pass
+            items.append((key, value))
+
+    return items
