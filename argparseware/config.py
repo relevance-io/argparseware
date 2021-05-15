@@ -168,10 +168,13 @@ class InlineOptionMiddleware(IMiddleware):
     Inline option middleware.
     """
 
-    def __init__(self, *args, dest: str = None, help: str = None) -> None:  # pylint:disable=redefined-builtin
+    def __init__(self, *args, dest: str = None, merge: bool = False,
+                 help: str = None) -> None:  # pylint:disable=redefined-builtin
         """
         This middleware registers an argument that allows to specify configuration
         values/arguments using a string syntax, which can be used mutiple times.
+
+        If *merge* is enabled, a dictionary is returned rather than a list of dictionaries.
 
         The *dest* and *help* arguments works like the `ArgumentParser` equivalents.
 
@@ -190,6 +193,7 @@ class InlineOptionMiddleware(IMiddleware):
         """
         self.args = args
         self.dest = dest
+        self.merge = merge
         self.help = help
 
     def configure(self, parser: argparse.ArgumentParser) -> None:
@@ -221,7 +225,13 @@ class InlineOptionMiddleware(IMiddleware):
                     pass
                 items.append({key: value})
 
-        args.__dict__.update({self.dest: list(items)})
+        if self.merge:
+            result = {}
+            for item in items:
+                result.update(item)
+            args.__dict__.update({self.dest: result})
+        else:
+            args.__dict__.update({self.dest: list(items)})
 
 
 class InlineConfigMiddleware(IMiddleware):
